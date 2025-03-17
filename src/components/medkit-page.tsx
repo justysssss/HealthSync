@@ -6,6 +6,8 @@ import {
   createAppointment,
   listMedications,
   listAppointments,
+  updateMedication,
+  updateAppointment,
   type MedicationDocument,
   type AppointmentDocument,
 } from "@/lib/appwrite"
@@ -26,6 +28,8 @@ export function MedkitPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [showMedicationDialog, setShowMedicationDialog] = useState(false)
   const [showAppointmentDialog, setShowAppointmentDialog] = useState(false)
+  const [medicationToEdit, setMedicationToEdit] = useState<MedicationDocument | undefined>()
+  const [appointmentToEdit, setAppointmentToEdit] = useState<AppointmentDocument | undefined>()
 
   useEffect(() => {
     const fetchData = async () => {
@@ -68,19 +72,35 @@ export function MedkitPage() {
     dosage: string
     totalDays: number
     schedule: string
+    id?: string
   }) => {
     try {
-      const newMedication = (await createMedication({
-        name: data.name,
-        dosage: data.dosage,
-        totalDays: data.totalDays,
-        remaining: data.totalDays,
-        schedule: data.schedule,
-      })) as MedicationDocument
-      setMedications([...medications, newMedication])
+      if (data.id) {
+        // Update existing medication
+        const updatedMedication = await updateMedication(data.id, {
+          name: data.name,
+          dosage: data.dosage,
+          totalDays: data.totalDays,
+          schedule: data.schedule,
+        }) as MedicationDocument
+        setMedications(medications.map(med =>
+          med.$id === data.id ? updatedMedication : med
+        ))
+      } else {
+        // Create new medication
+        const newMedication = (await createMedication({
+          name: data.name,
+          dosage: data.dosage,
+          totalDays: data.totalDays,
+          remaining: data.totalDays,
+          schedule: data.schedule,
+        })) as MedicationDocument
+        setMedications([...medications, newMedication])
+      }
       setShowMedicationDialog(false)
+      setMedicationToEdit(undefined)
     } catch (error) {
-      console.error("Error adding medication:", error)
+      console.error("Error managing medication:", error)
     }
   }
 
@@ -90,44 +110,61 @@ export function MedkitPage() {
     date: string
     time: string
     location: string
+    id?: string
   }) => {
     try {
-      const newAppointment = (await createAppointment({
-        doctor: data.doctor,
-        speciality: data.speciality,
-        date: data.date,
-        time: data.time,
-        location: data.location,
-      })) as AppointmentDocument
-      setAppointments([...appointments, newAppointment])
+      if (data.id) {
+        // Update existing appointment
+        const updatedAppointment = await updateAppointment(data.id, {
+          doctor: data.doctor,
+          speciality: data.speciality,
+          date: data.date,
+          time: data.time,
+          location: data.location,
+        }) as AppointmentDocument
+        setAppointments(appointments.map(apt =>
+          apt.$id === data.id ? updatedAppointment : apt
+        ))
+      } else {
+        // Create new appointment
+        const newAppointment = (await createAppointment({
+          doctor: data.doctor,
+          speciality: data.speciality,
+          date: data.date,
+          time: data.time,
+          location: data.location,
+        })) as AppointmentDocument
+        setAppointments([...appointments, newAppointment])
+      }
       setShowAppointmentDialog(false)
+      setAppointmentToEdit(undefined)
     } catch (error) {
-      console.error("Error adding appointment:", error)
+      console.error("Error managing appointment:", error)
     }
   }
 
   const handleEditAppointment = (appointmentId: string) => {
     const appointment = appointments.find((a) => a.$id === appointmentId)
     if (appointment) {
+      setAppointmentToEdit(appointment)
       setShowAppointmentDialog(true)
-      // You would need to update the AddAppointmentDialog to handle editing mode
-      // and pre-fill the form with existing appointment data
     }
   }
 
   const handleEditMedication = (medicationId: string) => {
     const medication = medications.find((m) => m.$id === medicationId)
     if (medication) {
+      setMedicationToEdit(medication)
       setShowMedicationDialog(true)
-      // You would need to update the AddMedicationDialog to handle editing mode
-      // and pre-fill the form with existing medication data
     }
   }
 
   const handlePlusClick = () => {
     if (activeTab === "medications") {
+      setMedicationToEdit(undefined)
       setShowMedicationDialog(true)
     } else if (activeTab === "appointments") {
+      setAppointmentToEdit(undefined)
       setShowAppointmentDialog(true)
     }
   }
@@ -155,7 +192,7 @@ export function MedkitPage() {
         <TabsContent value="medications" className="mt-0">
           <div className="flex items-center justify-between mb-4">
             <div className="flex-1" />
-            <div className="relative w-72">
+            <div className="relative w-64 transition-all duration-300 focus-within:w-72">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
               <Input
                 placeholder="Search medications..."
@@ -337,13 +374,21 @@ export function MedkitPage() {
       <PlusButton onClick={handlePlusClick} />
       <AddMedicationDialog
         isOpen={showMedicationDialog}
-        onClose={() => setShowMedicationDialog(false)}
+        onClose={() => {
+          setShowMedicationDialog(false)
+          setMedicationToEdit(undefined)
+        }}
         onAdd={handleAddMedication}
+        medicationToEdit={medicationToEdit}
       />
       <AddAppointmentDialog
         isOpen={showAppointmentDialog}
-        onClose={() => setShowAppointmentDialog(false)}
+        onClose={() => {
+          setShowAppointmentDialog(false)
+          setAppointmentToEdit(undefined)
+        }}
         onAdd={handleAddAppointment}
+        appointmentToEdit={appointmentToEdit}
       />
     </div>
   )

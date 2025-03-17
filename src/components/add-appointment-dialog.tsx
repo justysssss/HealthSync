@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   Dialog,
   DialogContent,
@@ -21,10 +21,19 @@ interface AddAppointmentDialogProps {
     date: string
     time: string
     location: string
+    id?: string
   }) => void
+  appointmentToEdit?: {
+    $id: string
+    doctor: string
+    speciality: string
+    date: string
+    time: string
+    location: string
+  }
 }
 
-export function AddAppointmentDialog({ isOpen, onClose, onAdd }: AddAppointmentDialogProps) {
+export function AddAppointmentDialog({ isOpen, onClose, onAdd, appointmentToEdit }: AddAppointmentDialogProps) {
   const [appointmentData, setAppointmentData] = useState({
     doctor: "",
     speciality: "",
@@ -33,9 +42,32 @@ export function AddAppointmentDialog({ isOpen, onClose, onAdd }: AddAppointmentD
     location: ""
   })
 
+  useEffect(() => {
+    if (appointmentToEdit) {
+      setAppointmentData({
+        doctor: appointmentToEdit.doctor,
+        speciality: appointmentToEdit.speciality,
+        date: appointmentToEdit.date,
+        time: appointmentToEdit.time,
+        location: appointmentToEdit.location
+      })
+    } else {
+      setAppointmentData({
+        doctor: "",
+        speciality: "",
+        date: "",
+        time: "",
+        location: ""
+      })
+    }
+  }, [appointmentToEdit])
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    onAdd(appointmentData)
+    onAdd({
+      ...appointmentData,
+      ...(appointmentToEdit && { id: appointmentToEdit.$id })
+    })
     setAppointmentData({ doctor: "", speciality: "", date: "", time: "", location: "" })
   }
 
@@ -43,7 +75,7 @@ export function AddAppointmentDialog({ isOpen, onClose, onAdd }: AddAppointmentD
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Add New Appointment</DialogTitle>
+          <DialogTitle>{appointmentToEdit ? 'Edit Appointment' : 'Add New Appointment'}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
@@ -100,7 +132,7 @@ export function AddAppointmentDialog({ isOpen, onClose, onAdd }: AddAppointmentD
             <Button type="button" variant="outline" onClick={onClose}>
               Cancel
             </Button>
-            <Button type="submit">Add Appointment</Button>
+            <Button type="submit">{appointmentToEdit ? 'Update Appointment' : 'Add Appointment'}</Button>
           </DialogFooter>
         </form>
       </DialogContent>

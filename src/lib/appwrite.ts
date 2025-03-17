@@ -292,6 +292,21 @@ async function listAppointments(): Promise<AppointmentDocument[]> {
   }
 }
 
+async function updateAppointment(appointmentId: string, data: Partial<AppointmentDocument>) {
+  try {
+    const appointment = await databases.updateDocument(
+      config.databaseId,
+      config.appointmentsCollectionId,
+      appointmentId,
+      data
+    );
+    return appointment;
+  } catch (error) {
+    console.error('Error updating appointment:', error);
+    throw error;
+  }
+}
+
 export {
   client,
   account,
@@ -306,7 +321,7 @@ export {
   listMedications,
   updateMedication,
   createAppointment,
-  listAppointments
+  listAppointments,
+  updateAppointment
 };
-
 

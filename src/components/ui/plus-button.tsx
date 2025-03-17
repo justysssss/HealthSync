@@ -28,7 +28,7 @@ export function PlusButton({ onClick }: PlusButtonProps) {
       onClick={handleClick}
       className={`h-14 w-14 fixed bottom-6 right-6 rounded-full shadow-lg ${
         pathname === "/my-drive"
-          ? "bg-emerald-500 hover:bg-emerald-600"
+          ? "bg-teal-600 hover:bg-emerald-700"
           : "bg-teal-600 hover:bg-teal-700"
       }`}
     >

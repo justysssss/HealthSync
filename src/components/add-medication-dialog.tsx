@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   Dialog,
   DialogContent,
@@ -20,10 +20,19 @@ interface AddMedicationDialogProps {
     dosage: string
     totalDays: number
     schedule: string
+    id?: string
   }) => void
+  medicationToEdit?: {
+    $id: string
+    name: string
+    dosage: string
+    totalDays: number
+    schedule: string
+    remaining: number
+  }
 }
 
-export function AddMedicationDialog({ isOpen, onClose, onAdd }: AddMedicationDialogProps) {
+export function AddMedicationDialog({ isOpen, onClose, onAdd, medicationToEdit }: AddMedicationDialogProps) {
   const [medicationData, setMedicationData] = useState({
     name: "",
     dosage: "",
@@ -31,13 +40,32 @@ export function AddMedicationDialog({ isOpen, onClose, onAdd }: AddMedicationDia
     schedule: ""
   })
 
+  useEffect(() => {
+    if (medicationToEdit) {
+      setMedicationData({
+        name: medicationToEdit.name,
+        dosage: medicationToEdit.dosage,
+        totalDays: medicationToEdit.totalDays.toString(),
+        schedule: medicationToEdit.schedule
+      })
+    } else {
+      setMedicationData({
+        name: "",
+        dosage: "",
+        totalDays: "",
+        schedule: ""
+      })
+    }
+  }, [medicationToEdit])
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     onAdd({
       name: medicationData.name,
       dosage: medicationData.dosage,
       totalDays: parseInt(medicationData.totalDays),
-      schedule: medicationData.schedule
+      schedule: medicationData.schedule,
+      ...(medicationToEdit && { id: medicationToEdit.$id })
     })
     setMedicationData({ name: "", dosage: "", totalDays: "", schedule: "" })
   }
@@ -46,7 +74,7 @@ export function AddMedicationDialog({ isOpen, onClose, onAdd }: AddMedicationDia
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Add New Medication</DialogTitle>
+          <DialogTitle>{medicationToEdit ? 'Edit Medication' : 'Add New Medication'}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
@@ -95,7 +123,7 @@ export function AddMedicationDialog({ isOpen, onClose, onAdd }: AddMedicationDia
             <Button type="button" variant="outline" onClick={onClose}>
               Cancel
             </Button>
-            <Button type="submit">Add Medication</Button>
+            <Button type="submit">{medicationToEdit ? 'Update Medication' : 'Add Medication'}</Button>
           </DialogFooter>
         </form>
       </DialogContent>
