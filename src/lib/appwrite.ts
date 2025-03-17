@@ -6,8 +6,28 @@ export interface FileDocument extends Models.Document {
   userId: string;
   parentId: string | null;
   createdAt: string;
-  fieldId?: string; // ID of the file in Appwrite Storage (only for files, not folders)
-  mimeType?: string; // MIME type of the file (only for files, not folders)
+  fieldId?: string;
+  mimeType?: string;
+}
+
+export interface MedicationDocument extends Models.Document {
+  name: string;
+  dosage: string;
+  remaining: number;
+  totalDays: number;
+  schedule: string;
+  userId: string;
+  createdAt: string;
+}
+
+export interface AppointmentDocument extends Models.Document {
+  doctor: string;
+  speciality: string;  // Fixed spelling to match Appwrite collection
+  date: string;
+  time: string;
+  location: string;
+  userId: string;
+  createdAt: string;
 }
 
 const client = new Client();
@@ -22,6 +42,8 @@ const config = {
   databaseId: process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID || '',
   storageId: process.env.NEXT_PUBLIC_APPWRITE_STORAGE_ID || '',
   filesCollectionId: process.env.NEXT_PUBLIC_APPWRITE_FILES_COLLECTION_ID || '',
+  medicationsCollectionId: process.env.NEXT_PUBLIC_APPWRITE_MEDICATIONS_COLLECTION_ID || '',
+  appointmentsCollectionId: process.env.NEXT_PUBLIC_APPWRITE_APPOINTMENTS_COLLECTION_ID || '',
 };
 
 client
@@ -100,20 +122,30 @@ async function createFolder(name: string, parentId: string | null = null) {
 }
 
 // List files and folders
-async function listFiles(): Promise<FileDocument[]> {
+async function listFiles(parentId: string | null = null): Promise<FileDocument[]> {
   try {
     const userId = await getCurrentUserId();
     
+    // Build query array
+    const queries = [
+      // Query for the current user's files
+      Query.equal('userId', userId),
+      // Order by type first (folders before files) then by name
+      Query.orderDesc('type'),
+      Query.orderAsc('name')
+    ];
+
+    // Add parentId filter
+    if (parentId === null) {
+      queries.push(Query.isNull('parentId'));
+    } else {
+      queries.push(Query.equal('parentId', parentId));
+    }
+
     const response = await databases.listDocuments(
       config.databaseId,
       config.filesCollectionId,
-      [
-        // Query for the current user's files
-        Query.equal('userId', userId),
-        // Order by type first (folders before files) then by name
-        Query.orderDesc('type'),
-        Query.orderAsc('name')
-      ]
+      queries
     );
     
     return response.documents as FileDocument[];
@@ -167,6 +199,98 @@ async function deleteFile(fileDocument: FileDocument) {
     throw error;
   }
 }
+// Medication helpers
+async function createMedication(data: Omit<MedicationDocument, '$id' | 'userId' | 'createdAt'>) {
+  try {
+    const userId = await getCurrentUserId();
+    const medication = await databases.createDocument(
+      config.databaseId,
+      config.medicationsCollectionId,
+      ID.unique(),
+      {
+        ...data,
+        userId,
+        createdAt: new Date().toISOString(),
+      }
+    );
+    return medication;
+  } catch (error) {
+    console.error('Error creating medication:', error);
+    throw error;
+  }
+}
+
+async function listMedications(): Promise<MedicationDocument[]> {
+  try {
+    const userId = await getCurrentUserId();
+    const response = await databases.listDocuments(
+      config.databaseId,
+      config.medicationsCollectionId,
+      [
+        Query.equal('userId', userId),
+        Query.orderDesc('createdAt')
+      ]
+    );
+    return response.documents as MedicationDocument[];
+  } catch (error) {
+    console.error('Error listing medications:', error);
+    throw error;
+  }
+}
+
+async function updateMedication(medicationId: string, data: Partial<MedicationDocument>) {
+  try {
+    const medication = await databases.updateDocument(
+      config.databaseId,
+      config.medicationsCollectionId,
+      medicationId,
+      data
+    );
+    return medication;
+  } catch (error) {
+    console.error('Error updating medication:', error);
+    throw error;
+  }
+}
+
+// Appointment helpers
+async function createAppointment(data: Omit<AppointmentDocument, '$id' | 'userId' | 'createdAt'>) {
+  try {
+    const userId = await getCurrentUserId();
+    const appointment = await databases.createDocument(
+      config.databaseId,
+      config.appointmentsCollectionId,
+      ID.unique(),
+      {
+        ...data,
+        userId,
+        createdAt: new Date().toISOString(),
+      }
+    );
+    return appointment;
+  } catch (error) {
+    console.error('Error creating appointment:', error);
+    throw error;
+  }
+}
+
+async function listAppointments(): Promise<AppointmentDocument[]> {
+  try {
+    const userId = await getCurrentUserId();
+    const response = await databases.listDocuments(
+      config.databaseId,
+      config.appointmentsCollectionId,
+      [
+        Query.equal('userId', userId),
+        Query.orderAsc('date')
+      ]
+    );
+    return response.documents as AppointmentDocument[];
+  } catch (error) {
+    console.error('Error listing appointments:', error);
+    throw error;
+  }
+}
 
 export {
   client,
@@ -177,6 +301,12 @@ export {
   createFolder,
   listFiles,
   downloadFile,
-  deleteFile
+  deleteFile,
+  createMedication,
+  listMedications,
+  updateMedication,
+  createAppointment,
+  listAppointments
 };
+
 

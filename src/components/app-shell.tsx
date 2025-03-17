@@ -44,17 +44,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </main>
       </div>
 
-      <PlusButton onClick={() => setShowCreateDialog(true)} />
-      
-      <CreateFileDialog 
-        isOpen={showCreateDialog}
-        onClose={() => setShowCreateDialog(false)}
-        onSuccess={() => {
-          // Handle successful file creation/upload
-          // You might want to refresh data or show a notification
-        }}
-        mode={pathname === "/my-drive" ? "drive" : "default"}
-      />
+      {pathname === "/my-drive" && (
+        <>
+          <PlusButton onClick={() => setShowCreateDialog(true)} />
+          <CreateFileDialog
+            isOpen={showCreateDialog}
+            onClose={() => setShowCreateDialog(false)}
+            onSuccess={() => {
+              // Handle successful file creation/upload
+              // You might want to refresh data or show a notification
+            }}
+            mode="drive"
+          />
+        </>
+      )}
     </div>
   )
 }

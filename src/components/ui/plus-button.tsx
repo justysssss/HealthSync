@@ -13,15 +13,19 @@ export function PlusButton({ onClick }: PlusButtonProps) {
   
   // Only show on medkit, reminders, and my-drive pages
   const showOnPaths = ["/medkit", "/reminders", "/my-drive"]
-  if (!showOnPaths.includes(pathname)) return null
+  console.log('Current pathname:', pathname); // Add this for debugging
+  if (!showOnPaths.some(path => pathname.startsWith(path))) return null
 
-  // Hide button when not on the active page
-  if (typeof window !== 'undefined' && window.location.pathname !== pathname) return null;
+  const handleClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onClick();
+  };
 
   return (
     <Button
       size="icon"
-      onClick={onClick}
+      onClick={handleClick}
       className={`h-14 w-14 fixed bottom-6 right-6 rounded-full shadow-lg ${
         pathname === "/my-drive"
           ? "bg-emerald-500 hover:bg-emerald-600"

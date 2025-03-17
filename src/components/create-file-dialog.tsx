@@ -41,7 +41,7 @@ export function CreateFileDialog({ isOpen, onClose, onSuccess, mode = "default",
     if (!selectedFile) return
     setIsLoading(true)
     try {
-      await uploadFile(selectedFile, currentFolder || null)
+      await uploadFile(selectedFile, currentFolder)
       onSuccess()
       onClose()
       setSelectedFile(null)
