@@ -390,19 +390,19 @@ export function HomePage() {
                         </DropdownMenu>
                       </CardHeader>
 
-                      {viewMode === "grid" && file.mimeType?.startsWith("image/") && (
-                        <div className="aspect-video relative overflow-hidden bg-gray-100 dark:bg-gray-800">
-                          <img
-                            src={getFilePreview(file)! || "/placeholder.svg"}
-                            alt={file.name}
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                      )}
-
-                      {viewMode === "grid" && !file.mimeType?.startsWith("image/") && (
-                        <div className="aspect-video flex items-center justify-center bg-gray-100 dark:bg-gray-800">
-                          <FileText size={48} className="text-gray-400" />
+                      {viewMode === "grid" && (
+                        <div className="mt-2 aspect-video relative overflow-hidden rounded bg-gray-100 dark:bg-gray-800">
+                          {file.mimeType?.startsWith("image/") ? (
+                            <img
+                              src={getFilePreview(file)!}
+                              alt={file.name}
+                              className="absolute inset-0 w-full h-full object-contain"
+                            />
+                          ) : (
+                            <div className="flex items-center justify-center w-full h-full text-gray-400">
+                              <FileText size={32} />
+                            </div>
+                          )}
                         </div>
                       )}
 

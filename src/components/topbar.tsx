@@ -3,10 +3,9 @@
 import { useState, useEffect } from "react"
 import { Bell, HeartPulse, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { useAuth } from "@/context/AuthContext"
 
 export function TopBar() {
-  const { user } = useAuth()
+  // const { user } = useAuth()
   const [currentTime, setCurrentTime] = useState("")
   const temperature = "33.6°C"
   const steps = "12265"
@@ -37,12 +36,6 @@ export function TopBar() {
       </div>
 
       <div className="flex items-center gap-2">
-        {user && (
-          <span className="text-sm text-gray-600 dark:text-gray-300 mr-4">
-            Welcome, {user.name}
-          </span>
-        )}
-
         <Button variant="outline" size="sm" className="bg-teal-600 text-white border-none hover:bg-teal-700">
           <RefreshCw className="h-4 w-4 mr-2" />
           {steps}
