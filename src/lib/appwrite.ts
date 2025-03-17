@@ -1,38 +1,116 @@
-import { Client, Account, Storage, Databases, ID, Query, Models } from 'appwrite';
+import { Client, Account, Storage, Databases, ID, Query, Models } from "appwrite";
 
-interface FileDocument extends Models.Document {
+export interface FileDocument extends Models.Document {
   name: string;
   type: string;
   userId: string;
   parentId: string | null;
   createdAt: string;
-  storageId?: string; // For files stored in Appwrite Storage
-  mimeType?: string;  // For file type detection and previews
-  size?: number;      // File size in bytes
+  fieldId?: string; // ID of the file in Appwrite Storage (only for files, not folders)
+  mimeType?: string; // MIME type of the file (only for files, not folders)
 }
 
 const client = new Client();
-client
-  .setEndpoint('https://cloud.appwrite.io/v1')
-  .setProject(process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID!);
+const account = new Account(client);
+const storage = new Storage(client);
+const databases = new Databases(client);
 
-export const account = new Account(client);
-export const storage = new Storage(client);
-export const databases = new Databases(client);
-export { ID };
+// Configuration
+const config = {
+  endpoint: "https://cloud.appwrite.io/v1",
+  projectId: process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID || '',
+  databaseId: process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID || '',
+  storageId: process.env.NEXT_PUBLIC_APPWRITE_STORAGE_ID || '',
+  filesCollectionId: process.env.NEXT_PUBLIC_APPWRITE_FILES_COLLECTION_ID || '',
+};
+
+client
+  .setEndpoint(config.endpoint)
+  .setProject(config.projectId);
+
+// Get current user's ID
+async function getCurrentUserId() {
+  try {
+    const user = await account.get();
+    return user.$id;
+  } catch (error) {
+    console.error('Error getting user ID:', error);
+    throw new Error('User not authenticated');
+  }
+}
+
+// File upload helper
+async function uploadFile(file: File, parentId: string | null = null) {
+  try {
+    const userId = await getCurrentUserId();
+
+    // Upload file to storage
+    const uploadedFile = await storage.createFile(
+      config.storageId,
+      ID.unique(),
+      file
+    );
+
+    // Create file metadata in database
+    // Store both file metadata and storage file ID
+    await databases.createDocument(
+      config.databaseId,
+      config.filesCollectionId,
+      ID.unique(),
+      {
+        name: file.name,
+        type: "file",
+        userId: userId,
+        parentId: parentId,
+        createdAt: new Date().toISOString(),
+        fieldId: uploadedFile.$id, // Store the storage file ID
+        mimeType: file.type // Store the file's MIME type
+      }
+    );
+
+    return uploadedFile;
+  } catch (error) {
+    console.error('Error uploading file:', error);
+    throw error;
+  }
+}
+
+// Create folder helper
+async function createFolder(name: string, parentId: string | null = null) {
+  try {
+    const userId = await getCurrentUserId();
+
+    const folder = await databases.createDocument(
+      config.databaseId,
+      config.filesCollectionId,
+      ID.unique(),
+      {
+        name: name,
+        type: "folder",
+        userId: userId,
+        parentId: parentId,
+        createdAt: new Date().toISOString(),
+      }
+    );
+    return folder;
+  } catch (error) {
+    console.error('Error creating folder:', error);
+    throw error;
+  }
+}
 
 // List files and folders
-export async function listFiles(): Promise<FileDocument[]> {
+async function listFiles(): Promise<FileDocument[]> {
   try {
-    // Get the current user's ID
-    const user = await account.get();
-    const userId = user.$id;
-
+    const userId = await getCurrentUserId();
+    
     const response = await databases.listDocuments(
-      process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID!,
-      process.env.NEXT_PUBLIC_APPWRITE_FILES_COLLECTION_ID!,
+      config.databaseId,
+      config.filesCollectionId,
       [
+        // Query for the current user's files
         Query.equal('userId', userId),
+        // Order by type first (folders before files) then by name
         Query.orderDesc('type'),
         Query.orderAsc('name')
       ]
@@ -45,66 +123,60 @@ export async function listFiles(): Promise<FileDocument[]> {
   }
 }
 
-// Create folder helper
-export async function createFolder(name: string, parentId: string | null = null): Promise<FileDocument> {
+// Download file helper
+async function downloadFile(fileDocument: FileDocument) {
   try {
-    const user = await account.get();
-    const userId = user.$id;
+    if (!fileDocument.fieldId) {
+      throw new Error('Field ID not found');
+    }
 
-    const folder = await databases.createDocument(
-      process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID!,
-      process.env.NEXT_PUBLIC_APPWRITE_FILES_COLLECTION_ID!,
-      ID.unique(),
-      {
-        name: name,
-        type: "folder",
-        userId: userId,
-        parentId: parentId,
-        createdAt: new Date().toISOString(),
-      }
+    // Get the file URL
+    const result = await storage.getFileView(
+      config.storageId,
+      fileDocument.fieldId
     );
-    return folder as FileDocument;
+
+    return result;
   } catch (error) {
-    console.error('Error creating folder:', error);
+    console.error('Error downloading file:', error);
     throw error;
   }
 }
 
-// File upload helper
-export async function uploadFile(file: File, parentId: string | null = null): Promise<FileDocument> {
+// Delete file helper
+async function deleteFile(fileDocument: FileDocument) {
   try {
-    const user = await account.get();
-    const userId = user.$id;
+    // Delete file from storage if it's a file (not a folder)
+    if (fileDocument.type === 'file' && fileDocument.fieldId) {
+      await storage.deleteFile(
+        config.storageId,
+        fileDocument.fieldId
+      );
+    }
 
-    // Upload file to storage first
-    const uploadedFile = await storage.createFile(
-      process.env.NEXT_PUBLIC_APPWRITE_STORAGE_ID!,
-      ID.unique(),
-      file
+    // Delete the document from database
+    await databases.deleteDocument(
+      config.databaseId,
+      config.filesCollectionId,
+      fileDocument.$id
     );
 
-    // Create file metadata in database with storage file ID
-    const document = await databases.createDocument(
-      process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID!,
-      process.env.NEXT_PUBLIC_APPWRITE_FILES_COLLECTION_ID!,
-      ID.unique(),
-      {
-        name: file.name,
-        type: "file",
-        userId: userId,
-        parentId: parentId,
-        createdAt: new Date().toISOString(),
-        storageId: uploadedFile.$id, // Link to the storage file
-        mimeType: file.type, // Store the file type for previews
-        size: file.size // Store file size for display
-      }
-    );
-
-    return document as FileDocument;
+    return true;
   } catch (error) {
-    console.error('Error uploading file:', error);
+    console.error('Error deleting file:', error);
     throw error;
   }
 }
 
-export type { FileDocument };
+export {
+  client,
+  account,
+  storage,
+  databases,
+  uploadFile,
+  createFolder,
+  listFiles,
+  downloadFile,
+  deleteFile
+};
+

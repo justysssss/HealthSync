@@ -19,14 +19,22 @@ import { CreateFileDialog } from "@/components/create-file-dialog"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { PlusButton } from "@/components/ui/plus-button"
+import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { listFiles, type FileDocument, storage, databases } from "@/lib/appwrite"
+import { listFiles, type FileDocument, storage, databases, downloadFile } from "@/lib/appwrite"
 
 export function MyDrivePage() {
   const [files, setFiles] = useState<FileDocument[]>([])
@@ -35,6 +43,10 @@ export function MyDrivePage() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const [currentFolder, setCurrentFolder] = useState<string | null>(null)
   const [showCreateDialog, setShowCreateDialog] = useState(false)
+  const [showRenameDialog, setShowRenameDialog] = useState(false)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [selectedFile, setSelectedFile] = useState<FileDocument | null>(null)
+  const [newFileName, setNewFileName] = useState("")
   
   const loadFiles = async () => {
     try {
@@ -64,50 +76,52 @@ export function MyDrivePage() {
         case 'open':
           if (file.type === 'folder') {
             setCurrentFolder(file.$id)
-          } else if (file.storageId) {
-            window.open(`https://cloud.appwrite.io/v1/storage/files/${file.storageId}/view?project=${process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID}`)
+          } else if (file.fieldId && !isLoading) {
+            try {
+              setIsLoading(true);
+              const url = storage.getFileView(
+                process.env.NEXT_PUBLIC_APPWRITE_STORAGE_ID!,
+                file.fieldId
+              );
+              window.open(url, '_blank');
+            } catch (error) {
+              console.error('Error opening file:', error);
+              alert('Failed to open file. Please try again later.');
+            } finally {
+              setIsLoading(false);
+            }
           }
           break;
 
         case 'download':
-          if (file.storageId) {
-            const link = document.createElement('a')
-            link.href = `https://cloud.appwrite.io/v1/storage/files/${file.storageId}/download?project=${process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID}`
-            link.download = file.name
-            document.body.appendChild(link)
-            link.click()
-            document.body.removeChild(link)
+          if (file.fieldId) {
+            try {
+              setIsLoading(true);
+              const url = await downloadFile(file);
+              const link = document.createElement('a');
+              link.href = url;
+              link.download = file.name;
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+            } catch (error) {
+              console.error('Error downloading file:', error);
+              alert('Failed to download file. Please try again later.');
+            } finally {
+              setIsLoading(false);
+            }
           }
           break;
 
         case 'rename':
-          const newName = window.prompt('Enter new name', file.name)
-          if (newName && newName !== file.name) {
-            await databases.updateDocument(
-              process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID!,
-              process.env.NEXT_PUBLIC_APPWRITE_FILES_COLLECTION_ID!,
-              file.$id,
-              { name: newName }
-            )
-            loadFiles()
-          }
+          setSelectedFile(file);
+          setNewFileName(file.name);
+          setShowRenameDialog(true);
           break;
 
         case 'delete':
-          if (window.confirm('Are you sure you want to delete this item?')) {
-            await databases.deleteDocument(
-              process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID!,
-              process.env.NEXT_PUBLIC_APPWRITE_FILES_COLLECTION_ID!,
-              file.$id
-            )
-            if (file.storageId) {
-              await storage.deleteFile(
-                process.env.NEXT_PUBLIC_APPWRITE_STORAGE_ID!,
-                file.storageId
-              )
-            }
-            loadFiles()
-          }
+          setSelectedFile(file);
+          setShowDeleteDialog(true);
           break;
       }
     } catch (error) {
@@ -123,101 +137,149 @@ export function MyDrivePage() {
   }
 
   const getPreviewUrl = (file: FileDocument) => {
-    if (!file.storageId) return null
+    if (!file.fieldId) return null;
     if (file.mimeType?.startsWith('image/')) {
-      return `https://cloud.appwrite.io/v1/storage/files/${file.storageId}/preview?project=${process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID}`
+      return storage.getFilePreview(
+        process.env.NEXT_PUBLIC_APPWRITE_STORAGE_ID!,
+        file.fieldId
+      );
     }
-    return null
+    return null;
   }
 
   const renderFilePreview = (file: FileDocument) => {
-    if (!file.storageId || file.type === 'folder') return null
+    if (!file.fieldId || file.type === 'folder') return null
     if (file.mimeType?.startsWith('image/')) {
       return (
-        <div className="absolute inset-0 bg-gray-100 dark:bg-gray-800">
+        <div className="relative w-full h-full">
           <img
             src={getPreviewUrl(file)!}
             alt={file.name}
-            className="w-full h-full object-cover"
+            className="absolute inset-0 w-full h-full object-contain"
           />
         </div>
       )
     }
-    return null
+    return (
+      <div className="flex items-center justify-center w-full h-full text-gray-400">
+        <FileText size={32} />
+      </div>
+    )
   }
 
   const renderFileItem = (file: FileDocument) => {
     const isFolder = file.type === "folder"
     
     return (
-      <Card 
-        key={file.$id} 
-        className="group overflow-hidden hover:shadow-md transition-shadow cursor-pointer relative h-auto"
-        onClick={() => handleFileAction(file, 'open')}
+      <Card
+        key={file.$id}
+        className="group overflow-hidden hover:shadow-md transition-shadow relative h-auto"
       >
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3 flex-1">
-              <div className={`p-2 rounded ${isFolder ? "bg-teal-100 text-teal-600" : "bg-red-100 text-red-600"}`}>
+        <CardContent className="p-0">
+          {/* Header */}
+          <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 border-b">
+            <button
+              className="flex items-center gap-2 flex-1 min-w-0 hover:bg-gray-100 dark:hover:bg-gray-700 p-1.5 rounded-md transition-colors"
+              onClick={() => handleFileAction(file, 'open')}
+            >
+              <div className={`p-1.5 rounded ${isFolder ? "bg-teal-100 text-teal-600" : "bg-red-100 text-red-600"}`}>
                 {getFileIcon(file)}
               </div>
-              <div className="min-w-0 flex-1">
-                <p className="font-medium text-sm truncate">{file.name}</p>
-                <p className="text-xs text-gray-500">
-                  {new Date(file.createdAt).toLocaleDateString()}
-                </p>
-                {file.size && (
-                  <p className="text-xs text-gray-500">
-                    {(file.size / 1024 / 1024).toFixed(2)} MB
-                  </p>
-                )}
-              </div>
-            </div>
+              <span className="font-medium text-sm truncate">{file.name}</span>
+            </button>
             
             <DropdownMenu>
-              <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                <button 
-                  className="opacity-0 group-hover:opacity-100 p-1 hover:bg-gray-100 rounded"
-                  title="More options"
-                  aria-label="More options"
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0"
                 >
-                  <MoreVertical className="h-5 w-5 text-gray-500" />
-                </button>
+                  <MoreVertical className="h-4 w-4" />
+                  <span className="sr-only">Open menu</span>
+                </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent>
                 {isFolder ? (
-                  <DropdownMenuItem onClick={() => handleFileAction(file, 'open')}>
-                    <Folder className="h-4 w-4 mr-2" />
+                  <DropdownMenuItem
+                    onClick={() => handleFileAction(file, 'open')}
+                    disabled={isLoading}
+                  >
+                    {isLoading ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Folder className="h-4 w-4 mr-2" />
+                    )}
                     Open
                   </DropdownMenuItem>
                 ) : (
                   <>
-                    <DropdownMenuItem onClick={() => handleFileAction(file, 'open')}>
-                      <FileText className="h-4 w-4 mr-2" />
+                    <DropdownMenuItem
+                      onClick={() => handleFileAction(file, 'open')}
+                      disabled={isLoading}
+                    >
+                      {isLoading ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <FileText className="h-4 w-4 mr-2" />
+                      )}
                       View
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleFileAction(file, 'download')}>
-                      <Download className="h-4 w-4 mr-2" />
+                    <DropdownMenuItem
+                      onClick={() => handleFileAction(file, 'download')}
+                      disabled={isLoading}
+                    >
+                      {isLoading ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <Download className="h-4 w-4 mr-2" />
+                      )}
                       Download
                     </DropdownMenuItem>
                   </>
                 )}
-                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); console.log('rename') }}>
-                  <Edit className="h-4 w-4 mr-2" />
+                <DropdownMenuItem
+                  onClick={(e) => handleFileAction(file, 'rename', e)}
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Edit className="h-4 w-4 mr-2" />
+                  )}
                   Rename
                 </DropdownMenuItem>
-                <DropdownMenuItem 
+                <DropdownMenuItem
                   className="text-red-600"
-                  onClick={(e) => { e.stopPropagation(); console.log('delete') }}
+                  onClick={(e) => handleFileAction(file, 'delete', e)}
+                  disabled={isLoading}
                 >
-                  <Trash className="h-4 w-4 mr-2" />
+                  {isLoading ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Trash className="h-4 w-4 mr-2" />
+                  )}
                   Delete
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
           
-          {viewMode === 'grid' && renderFilePreview(file)}
+          {/* Content area with file details and preview */}
+          <div className="p-3">
+            <div className="text-xs text-gray-500 space-y-1">
+              <p>{new Date(file.createdAt).toLocaleDateString()}</p>
+              {file.size && (
+                <p>{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+              )}
+            </div>
+            
+            {viewMode === 'grid' && !isFolder && (
+              <div className="mt-2 aspect-video relative overflow-hidden rounded bg-gray-100 dark:bg-gray-800">
+                {renderFilePreview(file)}
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
     )
@@ -228,7 +290,7 @@ export function MyDrivePage() {
   const nonFolders = files.filter(file => file.type === 'file' && file.parentId === currentFolder)
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 min-h-screen relative">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           {currentFolder && (
@@ -310,14 +372,114 @@ export function MyDrivePage() {
         </>
       )}
 
-      <PlusButton onClick={() => setShowCreateDialog(true)} />
-      
       <CreateFileDialog
         isOpen={showCreateDialog}
         onClose={() => setShowCreateDialog(false)}
         onSuccess={loadFiles}
         mode="drive"
       />
+
+      <Dialog open={showRenameDialog} onOpenChange={setShowRenameDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rename Item</DialogTitle>
+          </DialogHeader>
+          <Input
+            value={newFileName}
+            onChange={(e) => setNewFileName(e.target.value)}
+            placeholder="Enter new name"
+          />
+          <DialogFooter className="mt-4">
+            <Button
+              variant="outline"
+              onClick={() => setShowRenameDialog(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              disabled={!newFileName || newFileName === selectedFile?.name || isLoading}
+              onClick={async () => {
+                if (!selectedFile || !newFileName) return;
+                try {
+                  setIsLoading(true);
+                  await databases.updateDocument(
+                    process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID!,
+                    process.env.NEXT_PUBLIC_APPWRITE_FILES_COLLECTION_ID!,
+                    selectedFile.$id,
+                    { name: newFileName }
+                  );
+                  await loadFiles();
+                  setShowRenameDialog(false);
+                } catch (error) {
+                  console.error('Error renaming file:', error);
+                  alert('Failed to rename file. Please try again later.');
+                } finally {
+                  setIsLoading(false);
+                }
+              }}
+            >
+              {isLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                'Rename'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Item</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete &ldquo;{selectedFile?.name}&rdquo;? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-4">
+            <Button
+              variant="outline"
+              onClick={() => setShowDeleteDialog(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={isLoading}
+              onClick={async () => {
+                if (!selectedFile) return;
+                try {
+                  setIsLoading(true);
+                  if (selectedFile.fieldId) {
+                    await storage.deleteFile(
+                      process.env.NEXT_PUBLIC_APPWRITE_STORAGE_ID!,
+                      selectedFile.fieldId
+                    );
+                  }
+                  await databases.deleteDocument(
+                    process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID!,
+                    process.env.NEXT_PUBLIC_APPWRITE_FILES_COLLECTION_ID!,
+                    selectedFile.$id
+                  );
+                  await loadFiles();
+                  setShowDeleteDialog(false);
+                } catch (error) {
+                  console.error('Error deleting file:', error);
+                  alert('Failed to delete item. Please try again later.');
+                } finally {
+                  setIsLoading(false);
+                }
+              }}
+            >
+              {isLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                'Delete'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
