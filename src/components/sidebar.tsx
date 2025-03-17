@@ -1,7 +1,8 @@
 "use client"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Home, HardDrive, Briefcase, Bell, Plus, Settings, LogOut, HelpCircle } from "lucide-react"
+import { useState } from "react"
+import { Home, HardDrive, Briefcase, Bell, Plus, Settings, LogOut, HelpCircle, Loader2 } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -12,7 +13,7 @@ export function Sidebar() {
   const { user, logout } = useAuth()
 
   const navItems = [
-    { href: "/", label: "Home", icon: Home },
+    { href: "/dashboard", label: "Home", icon: Home },
     { href: "/my-drive", label: "My Drive", icon: HardDrive },
     { href: "/medkit", label: "Medkit", icon: Briefcase },
     { href: "/reminders", label: "Reminders", icon: Bell },
@@ -21,11 +22,16 @@ export function Sidebar() {
 
   const handleLogout = async () => {
     try {
+      // Disable any interactions while logging out
+      setLoading(true);
       await logout();
     } catch (error) {
       console.error("Logout error:", error);
+      // The error will be handled by AuthContext
     }
   };
+
+  const [loading, setLoading] = useState(false);
 
   return (
     <aside className="fixed left-0 top-0 bottom-0 w-[210px] pt-16 flex flex-col z-10 bg-white/10 dark:bg-gray-950/10 backdrop-blur-md">
@@ -80,10 +86,20 @@ export function Sidebar() {
           <Button
             variant="ghost"
             onClick={handleLogout}
+            disabled={loading}
             className="flex-1 bg-emerald-100/50 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-200 hover:bg-red-500/20 dark:hover:bg-red-500/20 hover:text-red-600 dark:hover:text-red-400 flex items-center justify-center gap-2"
           >
-            <LogOut size={20} />
-            <span>Logout</span>
+            {loading ? (
+              <>
+                <Loader2 size={20} className="animate-spin" />
+                <span>Logging out...</span>
+              </>
+            ) : (
+              <>
+                <LogOut size={20} />
+                <span>Logout</span>
+              </>
+            )}
           </Button>
         </div>
       </div>
