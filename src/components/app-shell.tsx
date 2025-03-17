@@ -38,7 +38,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <div className="flex flex-1">
         <Sidebar />
         <main className="flex-1 pt-16 md:pt-20 pl-[240px]">
-          <div className="min-h-[calc(100vh-5rem)] bg-white/80 dark:bg-gray-900/80 rounded-l-3xl shadow-lg p-8 backdrop-blur-md border-l border-t border-white/10 overflow-y-auto">
+        <div className="min-h-[calc(100vh-5rem)] bg-gradient-to-br from-teal-50 to-emerald-50 dark:from-teal-950 dark:to-emerald-950 rounded-l-3xl shadow-lg p-8 backdrop-blur-md border-l border-t border-white/10 overflow-y-auto">
             {children}
           </div>
         </main>

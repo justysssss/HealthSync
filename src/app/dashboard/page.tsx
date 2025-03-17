@@ -7,9 +7,5 @@ import { AppShell } from "@/components/app-shell";
 export default function DashboardPage() {
   useAuth();
 
-  return (
-     <AppShell>
-          <HomePage/>
-    </AppShell>
-  );
+  return <AppShell><HomePage/></AppShell>;
 }

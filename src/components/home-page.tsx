@@ -268,10 +268,6 @@ export function HomePage() {
                   <CardTitle className="text-lg font-semibold text-teal-800 dark:text-teal-300 flex items-center gap-2">
                     <Folder className="h-5 w-5" /> Recent Folders
                   </CardTitle>
-                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-teal-700 dark:text-teal-400">
-                    <Plus className="h-4 w-4" />
-                    <span className="sr-only">Add Folder</span>
-                  </Button>
                 </div>
               </CardHeader>
               <CardContent className="p-4">
@@ -336,9 +332,11 @@ export function HomePage() {
                 )}
               </CardContent>
               <CardFooter className="bg-gradient-to-r from-teal-500/5 to-emerald-500/5 dark:from-teal-900/10 dark:to-emerald-900/10 py-2 px-4 border-t border-teal-100 dark:border-teal-900">
-                <Button variant="ghost" size="sm" className="ml-auto text-teal-700 dark:text-teal-400 text-xs">
-                  View All <ChevronRight className="h-3 w-3 ml-1" />
-                </Button>
+                <a href="/my-drive">
+                  <Button variant="ghost" size="sm" className="ml-auto text-teal-700 dark:text-teal-400 text-xs">
+                    View All <ChevronRight className="h-3 w-3 ml-1" />
+                  </Button>
+                </a>
               </CardFooter>
             </Card>
 
@@ -349,10 +347,6 @@ export function HomePage() {
                   <CardTitle className="text-lg font-semibold text-blue-800 dark:text-blue-300 flex items-center gap-2">
                     <FileText className="h-5 w-5" /> Recent Files
                   </CardTitle>
-                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-blue-700 dark:text-blue-400">
-                    <Plus className="h-4 w-4" />
-                    <span className="sr-only">Add File</span>
-                  </Button>
                 </div>
               </CardHeader>
               <CardContent className="p-4">
@@ -428,9 +422,11 @@ export function HomePage() {
                 )}
               </CardContent>
               <CardFooter className="bg-gradient-to-r from-blue-500/5 to-indigo-500/5 dark:from-blue-900/10 dark:to-indigo-900/10 py-2 px-4 border-t border-blue-100 dark:border-blue-900">
-                <Button variant="ghost" size="sm" className="ml-auto text-blue-700 dark:text-blue-400 text-xs">
-                  View All <ChevronRight className="h-3 w-3 ml-1" />
-                </Button>
+                <a href="/my-drive">
+                  <Button variant="ghost" size="sm" className="ml-auto text-blue-700 dark:text-blue-400 text-xs">
+                    View All <ChevronRight className="h-3 w-3 ml-1" />
+                  </Button>
+                </a>
               </CardFooter>
             </Card>
           </div>
@@ -563,9 +559,11 @@ export function HomePage() {
                 </div>
               </CardContent>
               <CardFooter className="bg-gradient-to-r from-purple-500/5 to-pink-500/5 dark:from-purple-900/10 dark:to-pink-900/10 py-2 px-4 border-t border-purple-100 dark:border-purple-900">
-                <Button variant="ghost" size="sm" className="ml-auto text-purple-700 dark:text-purple-400 text-xs">
-                  View All <ChevronRight className="h-3 w-3 ml-1" />
-                </Button>
+                <a href="/medkit?tab=appointments">
+                  <Button variant="ghost" size="sm" className="ml-auto text-purple-700 dark:text-purple-400 text-xs">
+                    View All <ChevronRight className="h-3 w-3 ml-1" />
+                  </Button>
+                </a>
               </CardFooter>
             </Card>
 
