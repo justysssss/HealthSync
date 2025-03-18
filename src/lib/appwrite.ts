@@ -8,6 +8,7 @@ export interface FileDocument extends Models.Document {
   createdAt: string;
   fieldId?: string;
   mimeType?: string;
+  size?: number;
 }
 
 export interface MedicationDocument extends Models.Document {
@@ -22,7 +23,7 @@ export interface MedicationDocument extends Models.Document {
 
 export interface AppointmentDocument extends Models.Document {
   doctor: string;
-  speciality: string;  // Fixed spelling to match Appwrite collection
+  speciality: string;
   date: string;
   time: string;
   location: string;
@@ -64,41 +65,46 @@ async function getCurrentUserId() {
 // File upload helper
 async function uploadFile(file: File, parentId: string | null = null) {
   try {
+    console.log('=== Upload File Started ===');
+    console.log('File:', file.name);
+    console.log('Parent Folder ID:', parentId);
+    
     const userId = await getCurrentUserId();
+    console.log('User ID:', userId);
 
     // Upload file to storage
+    console.log('Uploading to storage...');
     const uploadedFile = await storage.createFile(
       config.storageId,
       ID.unique(),
       file
     );
+    console.log('Storage file created:', uploadedFile);
 
-    // Create file metadata in database with storage details
+    // Create file metadata
+    const metadata = {
+      name: file.name,
+      type: "file",
+      userId: userId,
+      parentId: parentId, // Important: explicitly set parentId
+      createdAt: new Date().toISOString(),
+      fieldId: uploadedFile.$id,
+      storageId: config.storageId,
+      mimeType: file.type,
+      size: file.size
+    };
+
+    console.log('Creating file metadata:', metadata);
+
+    // Create document in database
     const fileMetadata = await databases.createDocument(
       config.databaseId,
       config.filesCollectionId,
       ID.unique(),
-      {
-        name: file.name,
-        type: "file",
-        userId: userId,
-        parentId: parentId,
-        createdAt: new Date().toISOString(),
-        fieldId: uploadedFile.$id,
-        storageId: config.storageId, // Explicitly set storage bucket ID
-        mimeType: file.type,
-        size: file.size // Include file size
-      }
+      metadata
     );
 
-    console.log('Created file metadata:', {
-      name: file.name,
-      parentId: parentId,
-      fieldId: uploadedFile.$id,
-      storageId: config.storageId
-    });
-
-    // Return the file metadata document instead of just the storage file
+    console.log('File metadata created:', fileMetadata);
     return fileMetadata;
   } catch (error) {
     console.error('Error uploading file:', error);
@@ -109,20 +115,33 @@ async function uploadFile(file: File, parentId: string | null = null) {
 // Create folder helper
 async function createFolder(name: string, parentId: string | null = null) {
   try {
+    console.log('=== Create Folder Started ===');
+    console.log('Folder Name:', name);
+    console.log('Parent Folder ID:', parentId);
+    
     const userId = await getCurrentUserId();
+    console.log('User ID:', userId);
 
+    // Prepare folder data
+    const folderData = {
+      name: name,
+      type: "folder",
+      userId: userId,
+      parentId: parentId, // Important: explicitly set parentId
+      createdAt: new Date().toISOString(),
+    };
+
+    console.log('Creating folder with data:', folderData);
+
+    // Create folder in database
     const folder = await databases.createDocument(
       config.databaseId,
       config.filesCollectionId,
       ID.unique(),
-      {
-        name: name,
-        type: "folder",
-        userId: userId,
-        parentId: parentId,
-        createdAt: new Date().toISOString(),
-      }
+      folderData
     );
+
+    console.log('Folder created:', folder);
     return folder;
   } catch (error) {
     console.error('Error creating folder:', error);
@@ -133,30 +152,38 @@ async function createFolder(name: string, parentId: string | null = null) {
 // List files and folders
 async function listFiles(parentId: string | null = null): Promise<FileDocument[]> {
   try {
-    const userId = await getCurrentUserId();
+    console.log('=== List Files Started ===');
+    console.log('Parent Folder ID:', parentId);
     
+    const userId = await getCurrentUserId();
+    console.log('User ID:', userId);
+
     // Build query array
     const queries = [
-      // Query for the current user's files
       Query.equal('userId', userId),
-      // Order by type first (folders before files) then by name
       Query.orderDesc('type'),
       Query.orderAsc('name')
     ];
 
     // Add parentId filter
     if (parentId === null) {
+      console.log('Querying root folder (null parentId)');
       queries.push(Query.isNull('parentId'));
     } else {
+      console.log('Querying specific folder:', parentId);
       queries.push(Query.equal('parentId', parentId));
     }
 
+    console.log('Executing query with:', queries);
+
+    // Get documents from database
     const response = await databases.listDocuments(
       config.databaseId,
       config.filesCollectionId,
       queries
     );
-    
+
+    console.log('Query results:', response.documents);
     return response.documents as FileDocument[];
   } catch (error) {
     console.error('Error listing files:', error);
@@ -167,6 +194,9 @@ async function listFiles(parentId: string | null = null): Promise<FileDocument[]
 // Download file helper
 async function downloadFile(fileDocument: FileDocument) {
   try {
+    console.log('=== Download File Started ===');
+    console.log('File:', fileDocument);
+
     if (!fileDocument.fieldId) {
       throw new Error('Field ID not found');
     }
@@ -177,6 +207,7 @@ async function downloadFile(fileDocument: FileDocument) {
       fileDocument.fieldId
     );
 
+    console.log('Download URL generated:', result);
     return result;
   } catch (error) {
     console.error('Error downloading file:', error);
@@ -187,12 +218,16 @@ async function downloadFile(fileDocument: FileDocument) {
 // Delete file helper
 async function deleteFile(fileDocument: FileDocument) {
   try {
+    console.log('=== Delete File Started ===');
+    console.log('File:', fileDocument);
+
     // Delete file from storage if it's a file (not a folder)
     if (fileDocument.type === 'file' && fileDocument.fieldId) {
       await storage.deleteFile(
         config.storageId,
         fileDocument.fieldId
       );
+      console.log('File deleted from storage');
     }
 
     // Delete the document from database
@@ -201,6 +236,7 @@ async function deleteFile(fileDocument: FileDocument) {
       config.filesCollectionId,
       fileDocument.$id
     );
+    console.log('File metadata deleted from database');
 
     return true;
   } catch (error) {
@@ -208,6 +244,7 @@ async function deleteFile(fileDocument: FileDocument) {
     throw error;
   }
 }
+
 // Medication helpers
 async function createMedication(data: Omit<MedicationDocument, '$id' | 'userId' | 'createdAt'>) {
   try {
@@ -333,4 +370,3 @@ export {
   listAppointments,
   updateAppointment
 };
-

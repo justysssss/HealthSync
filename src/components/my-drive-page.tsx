@@ -43,6 +43,30 @@ export function MyDrivePage() {
   const [error, setError] = useState<string | null>(null)
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const [currentFolder, setCurrentFolder] = useState<string | null>(null)
+  const [folderPath, setFolderPath] = useState<FileDocument[]>([])
+
+  const updateFolderPath = async (folderId: string | null) => {
+    if (!folderId) {
+      setFolderPath([])
+      return
+    }
+    
+    // Find the folder in current files
+    const folder = files.find(f => f.$id === folderId)
+    if (folder) {
+      if (!folder.parentId) {
+        setFolderPath([folder])
+      } else {
+        // Build folder path
+        const buildPath = (folder: FileDocument): FileDocument[] => {
+          const result = [folder]
+          const parent = files.find(f => f.$id === folder.parentId)
+          return parent ? [...buildPath(parent), folder] : result
+        }
+        setFolderPath(buildPath(folder))
+      }
+    }
+  }
   const [showCreateDialog, setShowCreateDialog] = useState(false)
   const [showRenameDialog, setShowRenameDialog] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
@@ -53,8 +77,9 @@ export function MyDrivePage() {
     try {
       setIsLoading(true)
       setError(null)
-      const documents = await listFiles()
+      const documents = await listFiles(currentFolder)
       setFiles(documents)
+      updateFolderPath(currentFolder)
     } catch (err) {
       setError('Failed to load files')
       console.error('Error loading files:', err)
@@ -65,7 +90,7 @@ export function MyDrivePage() {
 
   useEffect(() => {
     loadFiles()
-  }, [])
+  }, [currentFolder]) // Reload files when folder changes
 
   const handleFileAction = async (file: FileDocument, action: string, e?: React.MouseEvent) => {
     if (e) {
@@ -298,19 +323,37 @@ export function MyDrivePage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          {currentFolder && (
-            <button
-              onClick={() => setCurrentFolder(null)}
-              className="p-1 hover:bg-gray-100 rounded"
-              title="Go back"
-              aria-label="Go back to parent folder"
-            >
-              <ChevronLeft className="h-5 w-5" />
-            </button>
-          )}
-          <h1 className="text-2xl font-semibold text-teal-700 dark:text-teal-400">
-            {currentFolder ? folders.find(f => f.$id === currentFolder)?.name || 'My Drive' : 'My Drive'}
-          </h1>
+          <div className="flex items-center gap-2">
+            {currentFolder && (
+              <button
+                onClick={() => setCurrentFolder(null)}
+                className="p-1 hover:bg-gray-100 rounded"
+                title="Go back"
+                aria-label="Go back to parent folder"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+            )}
+            <div className="flex items-center gap-1 text-2xl font-semibold text-teal-700 dark:text-teal-400">
+              <button
+                className="hover:text-teal-500"
+                onClick={() => setCurrentFolder(null)}
+              >
+                My Drive
+              </button>
+              {folderPath.map((folder) => (
+                <div key={folder.$id} className="flex items-center">
+                  <span className="mx-2 text-gray-400">/</span>
+                  <button
+                    className="hover:text-teal-500"
+                    onClick={() => setCurrentFolder(folder.$id)}
+                  >
+                    {folder.name}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
 
         <div className="flex items-center gap-4">
@@ -380,7 +423,16 @@ export function MyDrivePage() {
       <CreateFileDialog
         isOpen={showCreateDialog}
         onClose={() => setShowCreateDialog(false)}
-        onSuccess={loadFiles}
+        onSuccess={async (newItem) => {
+          if (newItem.parentId === currentFolder) {
+            // Only update state if the new item belongs in current folder
+            setFiles(prevFiles => [...prevFiles, newItem])
+          }
+          // Always close dialog
+          setShowCreateDialog(false)
+          // Reload files to ensure consistency
+          await loadFiles()
+        }}
         mode="drive"
         currentFolder={currentFolder}
       />

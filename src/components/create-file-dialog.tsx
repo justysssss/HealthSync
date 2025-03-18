@@ -6,12 +6,12 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { FolderPlus, Upload } from "lucide-react"
-import { uploadFile, createFolder } from "@/lib/appwrite"
+import { uploadFile, createFolder, type FileDocument } from "@/lib/appwrite"
 
 interface CreateFileDialogProps {
   isOpen: boolean
   onClose: () => void
-  onSuccess: () => void
+  onSuccess: (newItem: FileDocument) => void
   mode?: "default" | "drive"
   currentFolder?: string | null
 }
@@ -21,17 +21,27 @@ export function CreateFileDialog({ isOpen, onClose, onSuccess, mode = "default",
   const [isLoading, setIsLoading] = useState(false)
   const [folderName, setFolderName] = useState("")
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [fileInputKey, setFileInputKey] = useState<string>("file-input-1") // Add key for input reset
+  const [fileInputKey, setFileInputKey] = useState<string>("file-input-1")
+  const [error, setError] = useState<string | null>(null)
+
   const handleCreateFolder = async () => {
     if (!folderName) return
     setIsLoading(true)
+    setError(null)
     try {
-      await createFolder(folderName, currentFolder)
-      onSuccess()
+      console.log('=== Creating Folder ===')
+      console.log('Name:', folderName)
+      console.log('Parent Folder ID:', currentFolder)
+      
+      const folder = await createFolder(folderName, currentFolder) as FileDocument
+      console.log('Created folder:', folder)
+      
+      onSuccess(folder)
       onClose()
       setFolderName("")
     } catch (error) {
       console.error("Error creating folder:", error)
+      setError("Failed to create folder. Please try again.")
     } finally {
       setIsLoading(false)
     }
@@ -40,25 +50,32 @@ export function CreateFileDialog({ isOpen, onClose, onSuccess, mode = "default",
   const handleFileUpload = async () => {
     if (!selectedFile) return
     setIsLoading(true)
+    setError(null)
     try {
-      await uploadFile(selectedFile, currentFolder)
-      onSuccess()
+      console.log('=== Uploading File ===')
+      console.log('File:', selectedFile.name)
+      console.log('Parent Folder ID:', currentFolder)
+      
+      const file = await uploadFile(selectedFile, currentFolder) as FileDocument
+      console.log('Uploaded file:', file)
+      
+      onSuccess(file)
       onClose()
       setSelectedFile(null)
-      // Reset the file input by changing its key
       setFileInputKey(`file-input-${Date.now()}`)
     } catch (error) {
       console.error("Error uploading file:", error)
+      setError("Failed to upload file. Please try again.")
     } finally {
       setIsLoading(false)
     }
   }
 
-  // Reset form when dialog closes
   const handleDialogClose = () => {
     setFolderName("")
     setSelectedFile(null)
     setFileInputKey(`file-input-${Date.now()}`)
+    setError(null)
     onClose()
   }
 
@@ -66,8 +83,16 @@ export function CreateFileDialog({ isOpen, onClose, onSuccess, mode = "default",
     <Dialog open={isOpen} onOpenChange={handleDialogClose}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Create New</DialogTitle>
+          <DialogTitle>
+            Create New {currentFolder ? ' (Inside Folder)' : ''}
+          </DialogTitle>
         </DialogHeader>
+
+        {error && (
+          <div className="text-sm text-red-500 mb-4">
+            {error}
+          </div>
+        )}
 
         {mode === "drive" && (
           <div className="grid grid-cols-2 gap-2 mb-6">
@@ -103,7 +128,7 @@ export function CreateFileDialog({ isOpen, onClose, onSuccess, mode = "default",
               disabled={!folderName || isLoading}
             >
               <FolderPlus className="mr-2 h-4 w-4" />
-              Create Folder
+              Create Folder {currentFolder ? ' Here' : ''}
             </Button>
           </div>
         ) : (
@@ -111,7 +136,7 @@ export function CreateFileDialog({ isOpen, onClose, onSuccess, mode = "default",
             <div className="space-y-2">
               <Label htmlFor="file">Select File</Label>
               <Input
-                key={fileInputKey} // Add key to force re-render
+                key={fileInputKey}
                 id="file"
                 type="file"
                 onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
@@ -127,7 +152,7 @@ export function CreateFileDialog({ isOpen, onClose, onSuccess, mode = "default",
               disabled={!selectedFile || isLoading}
             >
               <Upload className="mr-2 h-4 w-4" />
-              Upload File
+              Upload File {currentFolder ? ' Here' : ''}
             </Button>
           </div>
         )}
