@@ -31,19 +31,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const router = useRouter();
 
   useEffect(() => {
-    checkUser();
+    // IIFE to handle async operation
+    (async () => {
+      try {
+        const userData = await account.get();
+        setUser(userData);
+      } catch {
+        setUser(null);
+      } finally {
+        // Delay setting loading to false to prevent hydration mismatch
+        setTimeout(() => {
+          setLoading(false);
+        }, 0);
+      }
+    })();
   }, []);
-
-  const checkUser = async () => {
-    try {
-      const userData = await account.get();
-      setUser(userData);
-    } catch {
-      setUser(null);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const generateUserId = () => {
     const timestamp = new Date().getTime().toString(36);
@@ -133,8 +135,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setLoading(true);
       setError(null);
       
-      await account.deleteSession("current");
+      // Set user to null before deleting session to prevent authentication errors
       setUser(null);
+      
+      try {
+        await account.deleteSession("current");
+      } catch (e) {
+        // Ignore session deletion errors since we're logging out anyway
+        console.log("Session deletion error (ignorable):", e);
+      }
       
       router.push("/login");
     } catch (e) {
@@ -143,6 +152,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       } else {
         setError("Error logging out");
       }
+      // Even if there's an error, keep user logged out
+      setUser(null);
     } finally {
       setLoading(false);
     }

@@ -163,14 +163,14 @@ return (
                                     <span className="absolute inset-0 w-full h-full bg-gradient-to-br from-blue-600 to-sky-500 rounded-lg opacity-0 group-hover:opacity-100 group-active:opacity-90 transition duration-300"></span>
                                     <span className="relative">Get Started</span>
                                 </Link>
-                                <Link href="#video" className="px-5 h-12 flex items-center sm:w-max w-full justify-center gap-x-3 border border-gray-200 dark:border-gray-900/60 rounded-lg text-blue-800 dark:text-gray-100 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 transition duration-300">
+                                {/* <Link href="#video" className="px-5 h-12 flex items-center sm:w-max w-full justify-center gap-x-3 border border-gray-200 dark:border-gray-900/60 rounded-lg text-blue-800 dark:text-gray-100 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 transition duration-300">
                                     <span>
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                                             <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
                                         </svg>
                                     </span>
                                     Watch Demo
-                                </Link>
+                                </Link> */}
                             </div>
                             <div className="max-w-lg lg:max-w-none mx-auto grid sm:grid-cols-3 divide-y divide-gray-100 dark:divide-gray-900 sm:divide-y-0 sm:gap-2 p-4 py-0 sm:py-4 text-left rounded-lg bg-white/80 dark:bg-gray-950/80 border border-gray-100 dark:border-gray-900 shadow-sm shadow-gray-200/50 dark:shadow-transparent backdrop-blur-sm">
                                 {

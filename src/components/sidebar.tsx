@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation"
 import { useState } from "react"
 import { Home, HardDrive, Briefcase, Bell, Plus, Settings, LogOut, HelpCircle, Loader2 } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { StorageBar } from "@/components/ui/storage-bar"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/context/AuthContext"
@@ -54,7 +55,10 @@ export function Sidebar() {
         ))}
       </div>
 
-      <div className="mt-auto p-4 space-y-3">
+      <div className="mt-auto p-4 space-y-4">
+        <div className="bg-emerald-50/50 dark:bg-emerald-950/50 rounded-lg">
+          <StorageBar variant="compact" />
+        </div>
         <div className="grid grid-cols-2 gap-2">
           <div className="h-16 bg-emerald-50/50 dark:bg-emerald-950/50 rounded-lg flex items-center justify-center">
             <Avatar className="h-10 w-10">

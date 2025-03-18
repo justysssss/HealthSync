@@ -10,7 +10,7 @@ const plans = [
     period: "forever",
     features: [
       "Upload up to 10 Prescriptions",
-      "3 Voice Assistant Calls/Day",
+      // "3 Voice Assistant Calls/Day",
       "Basic Storage (1GB)",
       "Basic Patient Management",
       "Basic Reports",
@@ -26,8 +26,8 @@ const plans = [
     period: "per month",
     features: [
       "Unlimited Prescription Uploads",
-      "Unlimited Voice Assistant",
-      "25GB Document Storage",
+      // "Unlimited Voice Assistant",
+      "2GB Document Storage",
       "Advanced Patient Management",
       "Detailed Analytics",
       "Priority Support",
