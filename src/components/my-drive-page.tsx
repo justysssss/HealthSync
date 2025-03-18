@@ -382,6 +382,7 @@ export function MyDrivePage() {
         onClose={() => setShowCreateDialog(false)}
         onSuccess={loadFiles}
         mode="drive"
+        currentFolder={currentFolder}
       />
 
       <Dialog open={showRenameDialog} onOpenChange={setShowRenameDialog}>

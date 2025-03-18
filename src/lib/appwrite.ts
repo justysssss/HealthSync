@@ -73,9 +73,8 @@ async function uploadFile(file: File, parentId: string | null = null) {
       file
     );
 
-    // Create file metadata in database
-    // Store both file metadata and storage file ID
-    await databases.createDocument(
+    // Create file metadata in database with storage details
+    const fileMetadata = await databases.createDocument(
       config.databaseId,
       config.filesCollectionId,
       ID.unique(),
@@ -85,12 +84,22 @@ async function uploadFile(file: File, parentId: string | null = null) {
         userId: userId,
         parentId: parentId,
         createdAt: new Date().toISOString(),
-        fieldId: uploadedFile.$id, // Store the storage file ID
-        mimeType: file.type // Store the file's MIME type
+        fieldId: uploadedFile.$id,
+        storageId: config.storageId, // Explicitly set storage bucket ID
+        mimeType: file.type,
+        size: file.size // Include file size
       }
     );
 
-    return uploadedFile;
+    console.log('Created file metadata:', {
+      name: file.name,
+      parentId: parentId,
+      fieldId: uploadedFile.$id,
+      storageId: config.storageId
+    });
+
+    // Return the file metadata document instead of just the storage file
+    return fileMetadata;
   } catch (error) {
     console.error('Error uploading file:', error);
     throw error;
